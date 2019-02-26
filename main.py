@@ -5,6 +5,7 @@ import tkinter as tk
 from Crypto import Random
 from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Random import get_random_bytes
 from tkinter.filedialog import askopenfilename
 from cryptosteganography import CryptoSteganography
@@ -12,8 +13,83 @@ from cryptosteganography import CryptoSteganography
 root = tk.Tk()
 root.withdraw()
 
+def exit1():
+    exit()
+
 def pad(s):
     return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
+
+def gen_rsa():
+    password = str(input("Enter a password to encrypt the key pair: "))
+    key = RSA.generate(2048)
+    enc_rsa = key.export_key(passphrase=password, pkcs=8, protection="scryptAndAES128-CBC")
+    #get pass and generate keys
+    f_out = open("privkey.pem", "wb")
+    f_out.write(enc_rsa)
+    f_out.close()
+    print(enc_rsa,"\n")
+    f_out = open("pubkey.pem", "wb")
+    f_out.write(key.publickey().export_key())
+    f_out.close()
+    print(key.publickey().export_key())
+    #write the keys to files
+    print("EXPORTED KEYS SUCCESSFULLY\n")
+
+def encrypt_rsa():
+    print("TRYING ENCRYPTION")
+    print("import your public key")
+    time.sleep(1)
+    pub_key = RSA.import_key(open(askopenfilename()).read())
+    session_key = get_random_bytes(16)
+    cipher_rsa = PKCS1_OAEP.new(pub_key)
+    enc_session_key = cipher_rsa.encrypt(session_key)
+    print("Chose file to encrypt")
+    time.sleep(1)
+    name = askopenfilename()
+    file = open(name,"rb")
+    data = file.read()
+
+    f_out = open(name + ".lck", "wb")
+    cipher_aes = AES.new(session_key, AES.MODE_EAX)
+    ciphertext, tag = cipher_aes.encrypt_and_digest(data)
+    [f_out.write(x) for x in (enc_session_key, cipher_aes.nonce, tag, ciphertext) ]
+    file.close()
+    os.remove(name)
+
+    print("DONE")
+
+def dcrypt_rsa():
+    print("TRYING DECRYPTION\n")
+    password = str(input("Enter the password to decrypt the RSA key: "))
+    print("choose priv key")
+    time.sleep(1)
+    priv_key = RSA.import_key(open(askopenfilename()).read(), passphrase=password)
+    print("choose crypted file")
+    time.sleep(1)
+    name = askopenfilename()
+    file_in = open(name,'rb')
+    enc_session_key, nonce, tag, ciphertext = \
+    [ file_in.read(x) for x in (priv_key.size_in_bytes(), 16, 16, -1) ]
+
+
+    cipher_rsa = PKCS1_OAEP.new(priv_key)
+    session_key = cipher_rsa.decrypt(enc_session_key)
+    cipher_aes = AES.new(session_key, AES.MODE_EAX, nonce)
+    data = cipher_aes.decrypt_and_verify(ciphertext, tag)
+    file_in.close()
+    name2 = name.replace(".lck", "")
+    fout = open(name2, "wb")
+    fout.write(data)
+    os.remove(name)
+
+
+def rsa():
+    opts = {1: gen_rsa, 2: encrypt_rsa, 3: dcrypt_rsa}
+    print("1.) Generate RSA key pari\n")
+    print("2.) Encrypt a file with RSA \n")
+    print("3.) Dcrypt a file with RSA encryption \n")
+    choice = int(input("Make youre choice: "))
+    opts[choice]()
 
 def file_crypt():
     print("Choose a file to encrypt!\n")
@@ -28,11 +104,12 @@ def file_dcrypt():
     fdcrypt(file)
     
 def main():
-    opts = {1: crypt, 2: dcrypt, 3: misc}
+    opts = {1: crypt, 2: dcrypt, 3: misc, 4:rsa, 5:exit1}
     print("1.) Encryption\n")
     print("2.) Decryption \n")
     print("3.) Misc.\n")
-    print("4.) Exit\n")
+    print("4.) RSA tools")
+    print("5.) Exit\n")
 
     choice = int(input("Make youre choice: "))
     opts[choice]()
