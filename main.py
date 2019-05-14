@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import os
 import time
+import getpass
 import tkinter as tk
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -19,18 +20,23 @@ def pad(s):
     return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
 
 def gen_rsa():
-    password = str(input("Enter a password to encrypt the key pair: "))
-    key = RSA.generate(2048)
+    #password = str(input("Enter a password to encrypt the key pair: "))
+    password = getpass.getpass(prompt="Enter password to encrypt key pair: ")
+    while password == '':
+        print("Enter a password")
+        password = getpass.getpass(prompt="Enter password to encrypt key pair: ")
+    
+    key = RSA.generate(4096)
     enc_rsa = key.export_key(passphrase=password, pkcs=8, protection="scryptAndAES128-CBC")
     #get pass and generate keys
     f_out = open("privkey.pem", "wb")
     f_out.write(enc_rsa)
     f_out.close()
-    print(enc_rsa,"\n")
+    print("\n",enc_rsa.decode("utf-8"),"\n")
     f_out = open("pubkey.pem", "wb")
     f_out.write(key.publickey().export_key())
     f_out.close()
-    print(key.publickey().export_key())
+    print("\n",key.publickey().export_key().decode("utf-8"),"\n")
     #write the keys to files
     print("EXPORTED KEYS SUCCESSFULLY\n")
 
@@ -84,7 +90,7 @@ def dcrypt_rsa():
 
 def rsa():
     opts = {1: gen_rsa, 2: encrypt_rsa, 3: dcrypt_rsa}
-    print("1.) Generate RSA key pari\n")
+    print("1.) Generate RSA key pair \n")
     print("2.) Encrypt a file with RSA \n")
     print("3.) Dcrypt a file with RSA encryption \n")
     choice = int(input("Make youre choice: "))
