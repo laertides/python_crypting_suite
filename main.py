@@ -196,7 +196,7 @@ def dir_dcrypt():
     dirr = str(input("Enter a directory you want to decrypt: "))
     for path, subdirs, files in os.walk(dirr):
         for name in files:
-            fcrypt(os.path.join(path, name))
+            fdcrypt(os.path.join(path, name))
 
 def text_dcrypt_cbc():
     print("crypt text\n")
