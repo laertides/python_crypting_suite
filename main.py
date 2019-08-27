@@ -147,6 +147,16 @@ def aes_dir_crypt():
     aes.dir_encrypt(password, dirr)
     main()
 
+def aes_dir_dcrypt():
+    password = getpass.getpass("[->] Enter Decryption Password: ")
+    dirr = input("[->] Enter Directory to Decrypt (BE CAREFUL!): ")
+    while (os.path.isdir(dirr) == False):
+        print("[x] No such Directory Exists!")
+        dirr = input("[->] Enter Directory to Decrypt (BE CAREFUL!) ")
+
+    aes.dir_dcrypt(password, dirr)
+    main()
+
 
 def aes_data_dcrypt():
     path = input("[->] Enter File to be Decrypted: ")
@@ -174,16 +184,17 @@ def aes_text_dcrypt():
     main()
 
 def AES():
-    opts = {1: aes_data_crypt, 2: aes_data_dcrypt, 3:aes_dir_crypt, 4: aes_text_crypt, 5: aes_text_dcrypt, 6: main}
+    opts = {1: aes_data_crypt, 2: aes_data_dcrypt, 3:aes_dir_crypt, 4:aes_dir_dcrypt, 5: aes_text_crypt, 6: aes_text_dcrypt, 7: main}
     print("-------AES TOOLS-------")
     print("1.) Data Encryption (Using EAX)")
     print("2.) Data Decryption (Using EAX)")
     print("3.) Directory Encryption (Using EAX)")
-    print("4.) Text Encryption (Using CBC)")
-    print("5.) Text Decryption (Using CBC)")
-    print("6.) Main Menu")
+    print("4.) Directory Decryption (Using EAX)")
+    print("5.) Text Encryption (Using CBC)")
+    print("6.) Text Decryption (Using CBC)")
+    print("7.) Main Menu")
     x = int(input("[->] Make a selection: "))
-    while(x > 5):
+    while(x > 7):
         x = int(input("[->] Make a selection: "))
     
     opts[x]()
@@ -206,18 +217,19 @@ def pass_arg():
 
 
 if __name__ == "__main__":
-    if(os.getuid() == 0): 
-        print("YOU SHOULD NOT RUN THIS PROGRAM AS ROOT!")
-        x = input("Are you sure you want to continue running as root? [y/N] ")
-        if (x == '' or x == 'n' or x == 'N'):
-            exit()
-        elif(x == 'y' or x == 'Y'):
-            if(len(sys.argv) > 1):
-                print("[!] USING CLI")
-                time.sleep(1)
-                pass_arg()
-            else:
-                main()
+    if (os.name != 'nt'):
+        if(os.getuid() == 0): 
+            print("YOU SHOULD NOT RUN THIS PROGRAM AS ROOT!")
+            x = input("Are you sure you want to continue running as root? [y/N] ")
+            if (x == '' or x == 'n' or x == 'N'):
+                exit()
+            elif(x == 'y' or x == 'Y'):
+                if(len(sys.argv) > 1):
+                    print("[!] USING CLI")
+                    time.sleep(1)
+                    pass_arg()
+                else:
+                    main()
     else:
         if(len(sys.argv) > 1):
             print("[!] USING CLI")

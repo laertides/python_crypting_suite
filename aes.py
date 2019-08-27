@@ -11,6 +11,7 @@ class aes:
 
     def sha256(password):
         key = hashlib.sha256(password.encode())
+        #print("SHA256 KEY: ", key.hexdigest().upper())
         key = key.digest()
         return key
     
@@ -46,28 +47,59 @@ class aes:
 
     def dir_encrypt(password, dirr):
         key = aes.sha256(password)
+        print("[!] SHA256: ", key.hex().upper())
+        time.sleep(1)
         ext = ".lck"
         print("[!] Reading Data")
         time.sleep(1)
+        sig = aes.sha256(str(password) + aes.salt)
         for path, subdirs, files in os.walk(dirr):
             print("[!] Encrypting: ", path)            
             for name in files:
                 cipher = AES.new(key, AES.MODE_EAX)
                 file = (os.path.join(path, name))
                 print("[!] Encypting %s" %name)
-                time.sleep(0.3)
+                time.sleep(0.1)
                 with open(file, "rb") as f:
                     data = f.read()
                 ciphertext, tag = cipher.encrypt_and_digest(data)
                 fn = file + ext
                 with open(fn, "wb") as f:
-                    [f.write(x) for x in (cipher.nonce, tag, ciphertext)]
+                    [f.write(x) for x in (sig, cipher.nonce, tag, ciphertext)]
                 os.remove(file)
-                
-
+        
+    def dir_dcrypt(password, dirr):
+        key = aes.sha256(password)
+        print("[!] SHA256: ", key.hex().upper())
+        time.sleep(1)
+        sig_orig = aes.sha256(str(password) + aes.salt)
+        print("[!] Signature: ", key.hex().upper())
+        time.sleep(1)
+        for path, subdirs, files in os.walk(dirr):
+            print("[!] Decrypting: ", path)            
+            for name in files:
+                file = os.path.join(path, name)
+                with open(file, 'rb') as f:
+                    sig, nonce, tag, ciphertext = [f.read(x) for x in (32,16,16,-1)]
+                if(sig == sig_orig):
+                    print("[!] Decrypting! " + name)
+                    time.sleep(0.1)
+                    cipher = AES.new(key, AES.MODE_EAX, nonce)
+                    try:
+                        data = cipher.decrypt_and_verify(ciphertext, tag)
+                        fn = file.replace(".lck", "")
+                        os.remove(file)
+                        with open(fn, 'wb') as f:
+                            f.write(data)
+                    except Exception as e:
+                        print("[x] Error: %s" % str(e) )
+                else:
+                    print("[x] Wrong Signatures!")
 
     def aes_dcrypt_eax(password, filename):
         key = aes.sha256(password)
+        print("[!] SHA256: ", key.hex().upper())
+        time.sleep(1)
         print("[!] Reading Data")
         time.sleep(1)
         with open(filename, "rb") as f:

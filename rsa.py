@@ -12,7 +12,7 @@ class rsa:
 
     def rsa_key(password):
         key = hashlib.sha256(password.encode())
-        print("[!] SHA256 KEY:" ,key.hexdigest().upper())
+        print("[!] SHA256 KEY: ", key.hexdigest().upper())
         time.sleep(1)
         key = key.digest()
         return key
