@@ -1,260 +1,357 @@
 #!/usr/bin/python
 import os
+import sys
 import time
+import argparse
 import getpass
-import tkinter as tk
-from Crypto import Random
-from Crypto.Cipher import AES
-from Crypto.PublicKey import RSA
-from Crypto.Cipher import AES, PKCS1_OAEP
-from Crypto.Random import get_random_bytes
-from tkinter.filedialog import askopenfilename
+import base64
+from rsa import rsa
+from aes import aes
 
-root = tk.Tk()
-root.withdraw()
+def key_gen():
+    password = getpass.getpass("[->] Enter a password: ")
+    password1 = getpass.getpass("[->] Retype your password: ")
+    while (password != password1):
+        print("[x] Wrong password, Try Again!")
+        password = getpass.getpass("[->] Enter a password: ")
+        password1 = getpass.getpass("[->] Retype your password: ")
 
-def exit1():
-    exit()
+    rsa.gen_rsa(password)
+    main()
 
-def pad(s):
-    return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
+def dir_RSA_crypt():
+    dirr = input("[->] Enter Directory to Encrypt (BE CAREFUL!): ")
+    while (os.path.isdir(dirr) == False):
+        print("[x] No such Directory Exists!")
+        dirr = input("[->] Enter Directory to Encrypt (BE CAREFUL!) ")
 
-def gen_rsa():
-    #password = str(input("Enter a password to encrypt the key pair: "))
-    password = getpass.getpass(prompt="Enter password to encrypt key pair: ")
-    while password == '':
-        print("Enter a password")
-        password = getpass.getpass(prompt="Enter password to encrypt key pair: ")
+    pubkey = input("[->] Enter path to public key: ")
+    while (os.path.exists(pubkey) == False) :
+        print("[x] Could not find File Specified")
+        pubkey = input("[->] Enter path to public key: ") 
+    rsa.dir_crypt(pubkey, dirr)
     
-    key = RSA.generate(4096)
-    enc_rsa = key.export_key(passphrase=password, pkcs=8, protection="scryptAndAES128-CBC")
-    #get pass and generate keys
-    f_out = open("privkey.pem", "wb")
-    f_out.write(enc_rsa)
-    f_out.close()
-    print("\n",enc_rsa.decode("utf-8"),"\n")
-    f_out = open("pubkey.pem", "wb")
-    f_out.write(key.publickey().export_key())
-    f_out.close()
-    print("\n",key.publickey().export_key().decode("utf-8"),"\n")
-    #write the keys to files
-    print("EXPORTED KEYS SUCCESSFULLY\n")
+    main()
 
-def encrypt_rsa():
-    print("TRYING ENCRYPTION")
-    print("import your public key")
-    time.sleep(1)
-    pub_key = RSA.import_key(open(askopenfilename()).read())
-    session_key = get_random_bytes(16)
-    cipher_rsa = PKCS1_OAEP.new(pub_key)
-    enc_session_key = cipher_rsa.encrypt(session_key)
-    print("Chose file to encrypt")
-    time.sleep(1)
-    name = askopenfilename()
-    file = open(name,"rb")
-    data = file.read()
+def dir_RSA_dcrypt():
+    password = getpass.getpass("[->] Enter Decryption Password: ")
 
-    f_out = open(name + ".lck", "wb")
-    cipher_aes = AES.new(session_key, AES.MODE_EAX)
-    ciphertext, tag = cipher_aes.encrypt_and_digest(data)
-    [f_out.write(x) for x in (enc_session_key, cipher_aes.nonce, tag, ciphertext) ]
-    file.close()
-    os.remove(name)
+    privkey = input("[->] Enter path to private key: ")
+    while (os.path.exists(privkey) == False) :
+        print("[x] Could not find File Specified")
+        pubkey = input("[->] Enter path to private key: ") 
 
-    print("DONE")
-
-def dcrypt_rsa():
-    print("TRYING DECRYPTION\n")
-    password = str(input("Enter the password to decrypt the RSA key: "))
-    print("choose priv key")
-    time.sleep(1)
-    priv_key = RSA.import_key(open(askopenfilename()).read(), passphrase=password)
-    print("choose crypted file")
-    time.sleep(1)
-    name = askopenfilename()
-    file_in = open(name,'rb')
-    enc_session_key, nonce, tag, ciphertext = \
-    [ file_in.read(x) for x in (priv_key.size_in_bytes(), 16, 16, -1) ]
-
-
-    cipher_rsa = PKCS1_OAEP.new(priv_key)
-    session_key = cipher_rsa.decrypt(enc_session_key)
-    cipher_aes = AES.new(session_key, AES.MODE_EAX, nonce)
-    data = cipher_aes.decrypt_and_verify(ciphertext, tag)
-    file_in.close()
-    name2 = name.replace(".lck", "")
-    fout = open(name2, "wb")
-    fout.write(data)
-    os.remove(name)
-
-
-def rsa():
-    opts = {1: gen_rsa, 2: encrypt_rsa, 3: dcrypt_rsa}
-    print("1.) Generate RSA key pair \n")
-    print("2.) Encrypt a file with RSA \n")
-    print("3.) Dcrypt a file with RSA encryption \n")
-    choice = int(input("Make youre choice: "))
-    opts[choice]()
-
-def file_crypt():
-    print("Choose a file to encrypt!\n")
-    time.sleep(2)
-    file = askopenfilename()
-    fcrypt(file)
-
-def file_dcrypt():
-    print("Choose a file to decrypt!\n")
-    time.sleep(2)
-    file = askopenfilename()
-    fdcrypt(file)
+    dirr = input("[->] Enter Path Conaining Encrypted Data: ")
+    while (os.path.isdir(dirr) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter Path Conaining Encrypted Data: ")
     
+    rsa.dir_dcrypt(password, privkey, dirr)
+    main()
+            
+def rsa_data_crypt():
+    pubkey = input("[->] Enter path to public key: ")
+    while (os.path.exists(pubkey) == False) :
+        print("[x] Could not find File Specified")
+        pubkey = input("[->] Enter path to public key: ") 
+
+    path = input("[->] Enter File to be Encrypted ")
+    while (os.path.exists(path) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter File to be Encrypted ")
+    
+    rsa.rsa_encrypt(pubkey, path)
+    main()
+
+def rsa_data_dcrypt():
+    password = getpass.getpass("[->] Enter Decryption Password: ")
+
+    privkey = input("[->] Enter path to private key: ")
+    while (os.path.exists(privkey) == False) :
+        print("[x] Could not find File Specified")
+        pubkey = input("[->] Enter path to private key: ") 
+
+    path = input("[->] Enter File Conaining Encrypted Data: ")
+    while (os.path.exists(path) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter File Conaining Encrypted Data: ")
+    
+    rsa.rsa_dcrypt(password, privkey, path)
+    main()
+    
+
+def rsa_text_crypt():
+    data = str(input("[->] Enter text to be encrypt: "))
+    
+    pubkey = input("[->] Enter path to public key: ")
+    while (os.path.exists(pubkey) == False) :
+        print("[x] Could not find File Specified")
+        pubkey = input("[->] Enter path to public key: ") 
+    
+    rsa.rsa_text_encrypt(pubkey, data)
+    main()
+    
+        
+def rsa_text_dcrypt():
+    password = getpass.getpass("[->] Enter Decryption Password: ")
+
+    path = input("[->] Enter File Conaining Encrypted text: ")
+    while (os.path.exists(path) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter File Conaining Encrypted text: ")
+
+    privkey = input("[->] Enter path to private key: ")
+    while (os.path.exists(privkey) == False) :
+        print("[x] Could not find File Specified")
+        pubkey = input("[->] Enter path to private key: ")
+    
+    rsa.rsa_text_dcrypt(password, privkey, path)
+    main()
+
+
+def RSA():
+    opts = {1: key_gen, 2: rsa_data_crypt, 3: dir_RSA_crypt, 4: rsa_text_crypt, 5: rsa_data_dcrypt, 6:dir_RSA_dcrypt, 7: rsa_text_dcrypt, 8: main}
+    print("-------RSA TOOLS-------")
+    print("1.) Generate 4096-bit RSA Key Pair")
+    print("2.) Encrypt File Using RSA")
+    print("3.) Encrypt Directory Using RSA")
+    print("4.) Encrypt Text Using RSA")
+    print("5.) Decrypt File Using RSA")
+    print("6.) Decrypt Directory Using RSA")
+    print("7.) Decrypt Text Using RSA")
+    print("8.) Main Menu")
+
+    x = int(input("[->] Make a selection: "))
+    while(x > 6):
+        x = int(input("[->] Make a selection: "))
+    
+    opts[x]()
+
+def aes_data_crypt():
+    path = input("[->] Enter Filename: ")
+    while (os.path.exists(path) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter Filename: ")
+
+    password = getpass.getpass("[->] Enter Encryption Password: ")
+    aes.aes_crypt_eax(password, path)
+    main()
+
+def aes_dir_crypt():
+    password = getpass.getpass("[->] Enter Encryption Password: ")
+    dirr = input("[->] Enter Directory to Encrypt (BE CAREFUL!): ")
+    while (os.path.isdir(dirr) == False):
+        print("[x] No such Directory Exists!")
+        dirr = input("[->] Enter Directory to Encrypt (BE CAREFUL!) ")
+
+    aes.dir_encrypt(password, dirr)
+    main()
+
+def aes_dir_dcrypt():
+    password = getpass.getpass("[->] Enter Decryption Password: ")
+    dirr = input("[->] Enter Directory to Decrypt (BE CAREFUL!): ")
+    while (os.path.isdir(dirr) == False):
+        print("[x] No such Directory Exists!")
+        dirr = input("[->] Enter Directory to Decrypt (BE CAREFUL!) ")
+
+    aes.dir_dcrypt(password, dirr)
+    main()
+
+
+def aes_data_dcrypt():
+    path = input("[->] Enter File to be Decrypted: ")
+    while (os.path.exists(path) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter File to be Decrypted: ")
+    password = getpass.getpass("[->] Enter Decryption Password: ")
+    aes.aes_dcrypt_eax(password, path)
+    main()
+
+def aes_text_crypt():
+    raw = str(input("[->] Enter text to be Encrypted "))
+    password = getpass.getpass("[->] Enter Encryption Password: ")
+    aes.aes_crypt_cbc(password, raw)
+    main()
+
+def aes_text_dcrypt():
+    path = input("[->] Enter File Conaining Encrypted text: ")
+    while (os.path.exists(path) == False):
+        print("[x] Could not find File Specified")
+        path = input("[->] Enter File Conaining Encrypted text: ")
+
+    password = getpass.getpass("[->] Enter Decryption Password: ")
+    aes.aex_dcrypt_cbc(password,path)
+    main()
+
+def AES():
+    opts = {1: aes_data_crypt, 2: aes_data_dcrypt, 3:aes_dir_crypt, 4:aes_dir_dcrypt, 5: aes_text_crypt, 6: aes_text_dcrypt, 7: main}
+    print("-------AES TOOLS-------")
+    print("1.) Data Encryption (Using EAX)")
+    print("2.) Data Decryption (Using EAX)")
+    print("3.) Directory Encryption (Using EAX)")
+    print("4.) Directory Decryption (Using EAX)")
+    print("5.) Text Encryption (Using CBC)")
+    print("6.) Text Decryption (Using CBC)")
+    print("7.) Main Menu")
+    x = int(input("[->] Make a selection: "))
+    while(x > 7):
+        x = int(input("[->] Make a selection: "))
+    
+    opts[x]()
+
 def main():
-    opts = {1: crypt, 2: dcrypt, 3: misc, 4:rsa, 5:exit1}
-    print("1.) Encryption\n")
-    print("2.) Decryption \n")
-    print("3.) Misc.\n")
-    print("4.) RSA tools")
-    print("5.) Exit\n")
+    opts = {1: RSA, 2: AES, 3: exit}
+    print('-------MAIN MENU-------')
+    print("1.) RSA Tools")
+    print("2.) AES Tools")
+    print("3.) Exit")
+    x = int(input("[->] Make a selection: "))
+    while(x > 3):
+        x = int(input("[->] Make a selection: "))
 
-    choice = int(input("Make youre choice: "))
-    opts[choice]()
+    opts[x]() 
 
-def text_dcrypt_opts():
-    opts = {1: text_crypt_eax, 2: text_crypt_cbc}
-    print("1.) EAX\n2.) CBC")
-    choice = int(input("Select Mode: "))
-    opts[choice]()
+def pass_arg():
+    parser = argparse.ArgumentParser(description="CLI MODE")
+    parser.add_argument('-m', '--mode', action='store', dest='mode', help='AES or RSA', required=True)
+    parser.add_argument('--dir', action='store_true',required=False)
+    #parser.add_argument('-f', '--file', action='store', dest='file', help='file to encrypt', required=False)
+    parser.add_argument('-c', '--create_pair', action='store_true', required=False)
+    parser.add_argument('-p', '--path', action='store', dest='path',required=True)
+    parser.add_argument('-d', '--decrypt', action='store_true', required=False)
+    parser.add_argument('-e', '--encrypt', action='store_true', required=False)
+    parser.add_argument('-k', '--key', action='store', dest='key', required=False)
+    parser.add_argument('--password', action='store', dest='pass_arg', required=False)
 
-def text_crypt_opts():
-    opts = {1: text_crypt_eax, 2: text_crypt_cbc}
-    print("1.) EAX\n2.)CBC")
-    choice = int(input("Select Mode: "))
-    opts[choice]()
+    args = parser.parse_args()
+    mode = args.mode
+    path = args.path
+    key = args.key
+    pass_arg = args.pass_arg
 
-def dir_crypt():
-    dirr = str(input("Enter a directory you want to encrypt: "))
-    for path, subdirs, files in os.walk(dirr):
-        for name in files:
-            fcrypt(os.path.join(path, name))
-
-def text_crypt_cbc():
-    print("ENCRYPTING TEXT USING CBC MODE\n")
-    text = str(input("gimme sum text to encrypt: \n")) 
-    message = pad(text.encode('utf-8')) #reading and padding text
-    key = str(input("enter a password: \n"))
-    key = pad(key.encode("utf-8")) #reading and padding password
-
-    iv = Random.new().read(AES.block_size)
-    cipher = AES.new(key, AES.MODE_CBC, iv) #creation of iv and cipher obj
-
-    out = iv + cipher.encrypt(message) #do the sh!t
-    f = open("crypted_text",'wb')
-    f.write(out)  #copy paste does not work needs to be written to a file
-    print("done\nPls check 'crypted_text.lck' for the file ")
-
-def text_crypt_eax():
-    print("ENCRYPTING TEXT USING EAX MODE\n")
-    text = str(input("Enter a text to encrypt: "))
-    text = text.encode("utf-8")
-    key = str(input("ennter a password: "))
-    key = pad(key.encode("utf-8"))
-    cipher = AES.new(key, AES.MODE_EAX) #we use EAX to detect modifications
-    ciphertext,tag = cipher.encrypt_and_digest(text)
-    file_out = open("crypted_text.lck", "wb")
-    [ file_out.write(x) for x in (cipher.nonce, tag, ciphertext) ]
-
-def fcrypt(path):
-    ext = ".lck"
-    key = str(input("Enter a password: "))
-    key = pad(key.encode("utf-8"))
-    #file = str(input("Enter file name to open: "))
-    f = open(path, "rb")
-    data = f.read()
-    cipher = AES.new(key, AES.MODE_EAX)
-    ciphertext, tag = cipher.encrypt_and_digest(data)
-    f_name = path + ext
-    file_out = open(f_name, "wb")
-    [ file_out.write(x) for x in (cipher.nonce, tag, ciphertext) ]
-    file_out.close()
-    f.close()
-    os.remove(path)
+    if(args.create_pair):
+        if(args.pass_arg):
+            rsa.gen_rsa(pass_arg)
+            exit()
+        else:
+            pwd = getpass.getpass("[!] Enter Password: ")
+            rsa.gen_rsa(pwd)
+            exit()
     
-#==================================================================================================================================================
+    if(mode=='rsa'):
+        if(args.dir):
+            if(args.encrypt):
+                if(os.path.isdir(path) == True):
+                    if(os.path.exists(key) == True):
+                        rsa.dir_crypt(key, path)
+                    else:
+                        print("[x] Unable to locate PUBLIC KEY")
+                        exit()
+                else:
+                    print("[x] No such directory found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.isdir(path) == True):
+                    if(os.path.exists(key) == True):
+                        if(args.pass_arg):
+                            rsa.dir_dcrypt(pass_arg, key, path)
+                        else:
+                            password = getpass.getpass("[!] Enter your password: ")
+                            rsa.dir_dcrypt(password, key)
+                    else:
+                        print("[x] Unable to locate PRIVATE KEY")
+                        exit()
+                else:
+                    print("[x] No such Directory found")
+                    exit()
+        else:
+            if(args.encrypt):
+                if(os.path.exists(path) == True):
+                    if(os.path.exists(key) == True):
+                        rsa.rsa_encrypt(key, path)
+                    else:
+                        print("[x] Unable to locate PUBLIC KEY")
+                        exit()
+                else:
+                    print("[x] No such file found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.exists(path) == True):
+                    if(os.path.exists(key) == True):
+                        if(args.pass_arg):
+                            rsa.rsa_dcrypt(pass_arg, key, path)
+                        else:
+                            password = getpass.getpass("[!] Enter your password: ")
+                            rsa.rsa_dcrypt(password, key, path)
+                    else:
+                        print("[x] Unable to locate PRIVATE KEY")
+                        exit()
+                else:
+                    print("[x] No such file found!")
+                    exit()
+    elif(mode=='aes'):
+        if(args.pass_arg):
+            password = pass_arg
+        else:
+            password = getpass.getpass("[!] Enter your password: ")
+        if(args.dir):
+            if(args.encrypt):
+                if(os.path.isdir(path) == True):
+                    aes.dir_encrypt(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.isdir(path) == True):
+                    aes.dir_dcrypt(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+        else:
+            if(args.encrypt):
+                if(os.path.exists(path) == True):
+                    aes.aes_crypt_eax(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.exists(path) == True):
+                    aes.aes_dcrypt_eax(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+    else:
+        print("Unrecognised mode")
+        print(parser.print_help())
 
-def crypt():
-    opts = {1: file_crypt, 2: dir_crypt, 3: text_crypt_opts}
-    print("1.) Ecrypt a file\n")
-    print("2.) Ecrypt a folder\n")
-    print("3.) Ecrypt text\n")
-    choice = int(input("Make youre choice: "))
-    opts[choice]()
-
-#==================================================================================================================================================
-#==================================================================================================================================================
-
-def dir_dcrypt():
-    dirr = str(input("Enter a directory you want to decrypt: "))
-    for path, subdirs, files in os.walk(dirr):
-        for name in files:
-            fdcrypt(os.path.join(path, name))
-
-def text_dcrypt_cbc():
-    print("crypt text\n")
-
-    key = str(input("Pls enter ur password: \n"))
-    key = pad(key.encode("utf-8")) #read and pad the password
-    path = str(input("enter the path of the file containing the encrypted text :\n"))
     
-    f = open(path,'rb')
-    entext = f.read() #open and read the file 
-    iv = entext[:AES.block_size] #grab the iv
-
-    cipher = AES.new(key, AES.MODE_CBC, iv) #create decipher obj
-    plaintext = cipher.decrypt(entext[AES.block_size:])
-
-    text = plaintext.rstrip(b"\0")
-    text = text.decode("utf-8") #strip and decode text
-
-    print("Done\n")
-    print("resaulting text: \n")
-    print(text)
-
-def text_dcrypt_aes():
-    print("DECRYPTING TEXT USING EAX MODE\n")
-    key = str(input("Enter your password: "))
-    key = pad(key.encode("utf-8"))
-    file = str(input("Enter name of the file containing encrypted TEXT: "))
-    file_in = open(file, "rb")
-    nonce, tag, ciphertext = [ file_in.read(x) for x in (16, 16, -1) ]
-    cipher = AES.new(key, AES.MODE_EAX, nonce)
-    data = cipher.decrypt_and_verify(ciphertext, tag)
-    print(data.decode("utf-8"))
-
-def fdcrypt(path):
-    #file = str(input("Enter file Name: "))
-    key = str(input("Enter your password: "))
-    key = pad(key.encode("utf-8"))
-    file_in = open(path, "rb")
-    nonce, tag, ciphertext = [ file_in.read(x) for x in (16, 16, -1) ]
-    cipher = AES.new(key, AES.MODE_EAX, nonce)
-    data = cipher.decrypt_and_verify(ciphertext, tag)
-    f_name = path.replace(".lck","")
-    fout = open(f_name, "wb")
-    fout.write(data)
-    fout.close()
-    #os.remove(file_in)
-#==================================================================================================================================================
-
-def dcrypt():
-    opts = {1: file_dcrypt, 2: dir_dcrypt, 3: text_dcrypt_opts}
-    print("1.) Decrypt a file\n")
-    print("2.) Decrypt a folder\n")
-    print("3.) Decrypt text\n")
-    choice = int(input("Make youre choice: "))
-    opts[choice]()
-
-def misc():
-    print("misc")
 
 if __name__ == "__main__":
-    main()
+    if (os.name != 'nt'):
+        if(os.getuid() == 0): 
+            print("YOU SHOULD NOT RUN THIS PROGRAM AS ROOT!")
+            x = input("Are you sure you want to continue running as root? [y/N] ")
+            if (x == '' or x == 'n' or x == 'N'):
+                exit()
+            elif(x == 'y' or x == 'Y'):
+                if(len(sys.argv) > 1):
+                    print("[!] USING CLI")
+                    time.sleep(1)
+                    pass_arg()
+                else:
+                    main()
+        else:
+            if(len(sys.argv) > 1):
+                print("[!] USING CLI")
+                time.sleep(1)
+                pass_arg()                
+            else:
+                main()
+    else:
+        if(len(sys.argv) > 1):
+            print("[!] USING CLI")
+            time.sleep(1)
+            pass_arg()
+        else:
+            main()
+
