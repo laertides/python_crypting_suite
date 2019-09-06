@@ -212,9 +212,119 @@ def main():
     opts[x]() 
 
 def pass_arg():
-    pass
-    
+    parser = argparse.ArgumentParser(description="CLI MODE")
+    parser.add_argument('-m', '--mode', action='store', dest='mode', help='AES or RSA', required=True)
+    parser.add_argument('--dir', action='store_true',required=False)
+    #parser.add_argument('-f', '--file', action='store', dest='file', help='file to encrypt', required=False)
+    parser.add_argument('-c', '--create_pair', action='store_true', required=False)
+    parser.add_argument('-p', '--path', action='store', dest='path',required=True)
+    parser.add_argument('-d', '--decrypt', action='store_true', required=False)
+    parser.add_argument('-e', '--encrypt', action='store_true', required=False)
+    parser.add_argument('-k', '--key', action='store', dest='key', required=False)
+    parser.add_argument('--password', action='store', dest='pass_arg', required=False)
 
+    args = parser.parse_args()
+    mode = args.mode
+    path = args.path
+    key = args.key
+    pass_arg = args.pass_arg
+
+    if(args.create_pair):
+        if(args.pass_arg):
+            rsa.gen_rsa(pass_arg)
+            exit()
+        else:
+            pwd = getpass.getpass("[!] Enter Password: ")
+            rsa.gen_rsa(pwd)
+            exit()
+    
+    if(mode=='rsa'):
+        if(args.dir):
+            if(args.encrypt):
+                if(os.path.isdir(path) == True):
+                    if(os.path.exists(key) == True):
+                        rsa.dir_crypt(key, path)
+                    else:
+                        print("[x] Unable to locate PUBLIC KEY")
+                        exit()
+                else:
+                    print("[x] No such directory found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.isdir(path) == True):
+                    if(os.path.exists(key) == True):
+                        if(args.pass_arg):
+                            rsa.dir_dcrypt(pass_arg, key, path)
+                        else:
+                            password = getpass.getpass("[!] Enter your password: ")
+                            rsa.dir_dcrypt(password, key)
+                    else:
+                        print("[x] Unable to locate PRIVATE KEY")
+                        exit()
+                else:
+                    print("[x] No such Directory found")
+                    exit()
+        else:
+            if(args.encrypt):
+                if(os.path.exists(path) == True):
+                    if(os.path.exists(key) == True):
+                        rsa.rsa_encrypt(key, path)
+                    else:
+                        print("[x] Unable to locate PUBLIC KEY")
+                        exit()
+                else:
+                    print("[x] No such file found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.exists(path) == True):
+                    if(os.path.exists(key) == True):
+                        if(args.pass_arg):
+                            rsa.rsa_dcrypt(pass_arg, key, path)
+                        else:
+                            password = getpass.getpass("[!] Enter your password: ")
+                            rsa.rsa_dcrypt(password, key, path)
+                    else:
+                        print("[x] Unable to locate PRIVATE KEY")
+                        exit()
+                else:
+                    print("[x] No such file found!")
+                    exit()
+    elif(mode=='aes'):
+        if(args.pass_arg):
+            password = pass_arg
+        else:
+            password = getpass.getpass("[!] Enter your password: ")
+        if(args.dir):
+            if(args.encrypt):
+                if(os.path.isdir(path) == True):
+                    aes.dir_encrypt(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.isdir(path) == True):
+                    aes.dir_dcrypt(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+        else:
+            if(args.encrypt):
+                if(os.path.exists(path) == True):
+                    aes.aes_crypt_eax(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+            elif(args.decrypt):
+                if(os.path.exists(path) == True):
+                    aes.aes_dcrypt_eax(password, path)
+                else:
+                    print("[x] No such directory found")
+                    exit()
+    else:
+        print("Unrecognised mode")
+        print(parser.print_help())
+
+    
 
 if __name__ == "__main__":
     if (os.name != 'nt'):
@@ -230,6 +340,13 @@ if __name__ == "__main__":
                     pass_arg()
                 else:
                     main()
+        else:
+            if(len(sys.argv) > 1):
+                print("[!] USING CLI")
+                time.sleep(1)
+                pass_arg()                
+            else:
+                main()
     else:
         if(len(sys.argv) > 1):
             print("[!] USING CLI")
